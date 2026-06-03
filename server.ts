@@ -3,9 +3,8 @@ import path from "path";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
-import { DEFAULT_CHARTGPT_WEBSITE } from "./src/template";
-import { LUXURY_PALETTES, getThemedStyleTagInner } from "./src/palettes";
-
+import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
+import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
 const LEADS_FILE = path.join(process.cwd(), "leads.json");
 const ANALYTICS_FILE = path.join(process.cwd(), "analytics.json");
 
