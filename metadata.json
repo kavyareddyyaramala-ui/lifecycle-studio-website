@@ -1,0 +1,6 @@
+{
+  "name": "MailBench Customizer",
+  "description": "Interactive color palette explorer and styling repaint suite for ChatGPT-generated landing pages and custom websites.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
