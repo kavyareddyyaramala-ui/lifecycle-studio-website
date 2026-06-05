@@ -2,8 +2,8 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
-import { createServer as createViteServer } from "vite";
-import { DEFAULT_CHARTGPT_WEBSITE } from "./src/template";
+import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
+import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
 import { LUXURY_PALETTES, getThemedStyleTagInner } from "./src/palettes";
 import nodemailer from "nodemailer";
 
