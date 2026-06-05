@@ -4,7 +4,6 @@ import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
 import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
-import { LUXURY_PALETTES, getThemedStyleTagInner } from "./src/palettes";
 import nodemailer from "nodemailer";
 
 /**
