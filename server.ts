@@ -3,8 +3,20 @@ import path from "path";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
-import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
-import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
+import { DEFAULT_CHARTGPT_WEBSITE } from "./src/template";
+import { LUXURY_PALETTES, getThemedStyleTagInner } from "./src/palettes";
+import nodemailer from "nodemailer";
+
+/**
+ * Required Environment Variables for Nodemailer Email Notification:
+ * - SMTP_HOST: The SMTP server host address (e.g., mail.smtp.com or smtp.gmail.com)
+ * - SMTP_PORT: The port number for your SMTP connection (typically 587 or 465)
+ * - SMTP_USER: Username or email for the authenticated SMTP session
+ * - SMTP_PASS: Password or app authorization token for SMTP session
+ * - SMTP_FROM: Sender email address to dispatch alerts under (default: "no-reply@mail-bench.com")
+ * - LEAD_NOTIFY_EMAIL: Recipient address that receives submissions (default: "services@mail-bench.com")
+ */
+
 const LEADS_FILE = path.join(process.cwd(), "leads.json");
 const ANALYTICS_FILE = path.join(process.cwd(), "analytics.json");
 
@@ -86,6 +98,123 @@ function writeAnalytics(visits: any[]) {
   }
 }
 
+/**
+ * Sends a real SMTP email notification for captured leads using Nodemailer.
+ * Requires: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, and LEAD_NOTIFY_EMAIL
+ */
+async function sendLeadEmail(lead: any) {
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM || "no-reply@mail-bench.com";
+  const to = process.env.LEAD_NOTIFY_EMAIL || "services@mail-bench.com";
+
+  if (!host || !user || !pass) {
+    console.warn("[Nodemailer] SMTP configuration is incomplete. Real email notification skipped.", {
+      host: !!host,
+      user: !!user,
+      pass: !!pass
+    });
+    return;
+  }
+
+  // Create transporter dynamically to protect main thread load
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465, // true for port 465 SSL, false for TLS port 587
+    auth: {
+      user,
+      pass,
+    },
+  });
+
+  const subject = `New MailBench Inquiry - ${lead.name || "Unknown"} (${lead.company || "No Company"})`;
+
+  const textBody = `
+=================================================
+New MailBench Inquiry Captured
+=================================================
+Date/Time: ${lead.timestamp}
+Full Name: ${lead.name}
+Email Address: ${lead.email}
+Phone Number: ${lead.phone || "Not Provided"}
+Company/Brand: ${lead.company}
+Industry Segment: ${lead.industry}
+Service Needed: ${lead.serviceInterested}
+Obstacle/Message: ${lead.biggestChallenge}
+Monthly Revenue: ${lead.monthlyRevenue}
+=================================================
+Registered securely in leads.json database cache.
+  `;
+
+  const htmlBody = `
+    <div style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #eedfc9; border-radius: 12px; background-color: #fffaf3; color: #1c1815;">
+      <div style="border-bottom: 2px solid #e17938; padding-bottom: 16px; margin-bottom: 24px;">
+        <h2 style="color: #132c4a; margin: 0 0 6px 0; font-size: 22px; font-weight: bold;">MailBench Lifecycle Studio</h2>
+        <p style="color: #e17938; font-weight: bold; margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;">New Inquiry Captured Automatically</p>
+      </div>
+      
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+        <tbody>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82; width: 35%;">Submission Date:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.timestamp}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Full Name:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815; font-size: 15px;"><strong>${lead.name}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Email Address:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;"><a href="mailto:${lead.email}" style="color: #e17938; text-decoration: none;">${lead.email}</a></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Phone Number:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.phone || "Not Provided"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Company / Brand:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815; font-size: 15px;"><strong>${lead.company}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Industry Segment:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.industry}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Service Needed:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #132c4a; font-weight: 600;">${lead.serviceInterested}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Monthly Revenue:</td>
+            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.monthlyRevenue}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; vertical-align: top; font-weight: bold; color: #5a6b82; padding-top: 10px;">Obstacle / Memo:</td>
+            <td style="padding: 10px 0; color: #1c1815; line-height: 1.5; padding-top: 10px;">${lead.biggestChallenge}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="background-color: #fbf4ec; border-radius: 8px; padding: 12px 16px; font-size: 11px; color: #8fa0b5; text-align: center; border: 1px dashed #eedfc9;">
+        This is an automated notification dispatch from MailBench Lifecycle. Submissions are saved persistently in local storage database.
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"${from.split("@")[0]}" <${from}>`,
+    to,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  });
+
+  const notifyEmailEnv = process.env.LEAD_NOTIFY_EMAIL || "services@mail-bench.com";
+  console.log(`REAL EMAIL SENT TO: ${notifyEmailEnv}`);
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -127,9 +256,9 @@ async function startServer() {
     });
   });
 
-  // API 4: Capture premium inquiry submissions & notify user via simulated email trigger
+  // API 4: Capture premium inquiry submissions & notify user via real SMTP email trigger
   app.post("/api/leads", (req, res) => {
-    const { name, email, company, industry, serviceInterested, biggestChallenge, monthlyRevenue } = req.body;
+    const { name, email, phone, company, industry, serviceInterested, biggestChallenge, monthlyRevenue } = req.body;
     
     if (!name || !email) {
       return res.status(400).json({ error: "Name and Email are required fields." });
@@ -140,6 +269,7 @@ async function startServer() {
       id: "lead-" + Date.now().toString(36),
       name,
       email,
+      phone: phone || req.body.Phone || "Not Provided",
       company: company || "Not Provided",
       industry: industry || "Not Provided",
       serviceInterested: serviceInterested || "Not Provided",
@@ -148,16 +278,18 @@ async function startServer() {
       timestamp: new Date().toISOString()
     };
 
+    // Keep saving to leads.json exactly as it is (Step 1)
     leads.unshift(newLead);
     writeLeads(leads);
 
-    // Simulated immediate SMTP email dispatch to user's configured email address
+    // Keep console logs active for quick inspection
     console.log("=================================================");
-    console.log(`[SMTP] NEW INQUIRY DISPATCHED TO: Kavyareddy.yaramala@gmail.com`);
-    console.log(`Subject: 🌟 New Premium Lead Captured - ${newLead.company}`);
+    console.log(`[SMTP Alert] NEW INQUIRY SAVED TO DATABASE`);
+    console.log(`Subject: New MailBench Inquiry - ${newLead.name || newLead.company}`);
     console.log(`Lead Details:`);
     console.log(`- Full Name: ${newLead.name}`);
     console.log(`- Email Address: ${newLead.email}`);
+    console.log(`- Phone Number: ${newLead.phone}`);
     console.log(`- Brand / Company: ${newLead.company}`);
     console.log(`- Industry Segment: ${newLead.industry}`);
     console.log(`- Service Interested In: ${newLead.serviceInterested}`);
@@ -165,6 +297,16 @@ async function startServer() {
     console.log(`- Monthly Revenue: ${newLead.monthlyRevenue}`);
     console.log(`- Timestamp: ${newLead.timestamp}`);
     console.log("=================================================");
+
+    // Dispatch real email alert using Nodemailer with environment variables (Step 8)
+    sendLeadEmail(newLead)
+      .then(() => {
+        console.log("[Nodemailer] Email transmitted successfully.");
+      })
+      .catch((err) => {
+        // Robust Error Handling: if send fails, we still continue with success response
+        console.error("[Nodemailer] Failed to send email alert:", err);
+      });
 
     res.json({ 
       success: true, 

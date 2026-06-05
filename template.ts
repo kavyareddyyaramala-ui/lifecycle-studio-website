@@ -2407,6 +2407,7 @@ function handleFooterInquirySubmit(e) {
   const payload = {
     name: nameVal,
     email: emailVal,
+    phone: phoneVal || "Not Provided",
     company: "Inquiry Footer Form",
     industry: typeVal || "Not Provided",
     serviceInterested: serviceVal || "Not Provided",
