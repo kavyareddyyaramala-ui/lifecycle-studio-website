@@ -1,106 +1,79 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DEFAULT_CHARTGPT_WEBSITE } from './template';
-import { ColorPalette, LUXURY_PALETTES, getThemedStyleTagInner } from './palettes';
+import { LUXURY_PALETTES, getThemedStyleTagInner } from './palettes';
 
 export default function App() {
-  const [htmlCode] = useState<string>(DEFAULT_CHARTGPT_WEBSITE);
-  const [activePalette] = useState<ColorPalette>(
-    LUXURY_PALETTES.find(p => p.id === 'mykonos-olive-limestone') || LUXURY_PALETTES[0]
-  );
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [bodyHtml, setBodyHtml] = useState<string>('');
 
-  // Auto-generate themed HTML with styling rules injected
-  const getThemedStyleTag = (palette: ColorPalette) => {
-    return `
-    <style id="mailbench-color-repaint-overrides">
-    ${getThemedStyleTagInner(palette)}
-    </style>
-    `;
-  };
+  useEffect(() => {
+    // 1. Establish the color palette
+    const activePalette = LUXURY_PALETTES.find(p => p.id === 'mykonos-olive-limestone') || LUXURY_PALETTES[0];
 
-  // Compile full document matching with styles and auto-including tailwind playscripts
-  const getCompiledDocHTML = () => {
-    let cleanCode = htmlCode.trim();
-    if (!cleanCode) return '';
+    // 2. Parse the HTML code to extract style tags, links, and body content
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(DEFAULT_CHARTGPT_WEBSITE, 'text/html');
+
+    // 3. Inject font stylesheets and static CSS blocks into parent document head
+    const parentHead = document.head;
+    const existingFonts = Array.from(parentHead.querySelectorAll('link[href*="google"]'));
+    if (existingFonts.length === 0) {
+      doc.head.querySelectorAll('link, style').forEach((node) => {
+        // Do not copy the override style if it exists
+        if (node.id === 'mailbench-color-repaint-overrides') return;
+        
+        const clonedNode = node.cloneNode(true);
+        parentHead.appendChild(clonedNode);
+      });
+    }
+
+    // 4. Inject specific color repaint overrides
+    const styles = getThemedStyleTagInner(activePalette);
+    let styleTag = document.getElementById('mailbench-color-repaint-overrides');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'mailbench-color-repaint-overrides';
+      parentHead.appendChild(styleTag);
+    }
+    styleTag.textContent = styles;
+
+    // 5. Extract body HTML to load natively into modern React element tree
+    const rawBody = doc.body.innerHTML;
+    setBodyHtml(rawBody);
+  }, []);
+
+  useEffect(() => {
+    if (!bodyHtml) return;
+
+    // 6. Append dynamic scripts directly to document body to enable cyclers, anchors and form submissions
+    const scriptTagId = 'mailbench-template-scripts';
+    const existingScript = document.getElementById(scriptTagId);
+    if (existingScript) existingScript.remove();
+
+    const newScript = document.createElement('script');
+    newScript.id = scriptTagId;
+
+    const startIdx = DEFAULT_CHARTGPT_WEBSITE.indexOf('<script>');
+    const endIdx = DEFAULT_CHARTGPT_WEBSITE.lastIndexOf('</script>');
     
-    // Auto-Inject Tailwind if not present
-    const includesTailwind = cleanCode.includes('tailwindcss') || cleanCode.includes('cdn.tailwindcss.com');
-    const tailwindScriptTag = !includesTailwind 
-      ? '<script src="https://cdn.tailwindcss.com"></script>\n<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">'
-      : '';
-
-    const themedStyle = getThemedStyleTag(activePalette);
-
-    if (cleanCode.includes('</head>')) {
-      return cleanCode.replace('</head>', `    ${tailwindScriptTag}\n    ${themedStyle}\n</head>`);
-    } else if (cleanCode.includes('<head>')) {
-      return cleanCode.replace('<head>', `<head>\n    ${tailwindScriptTag}\n    ${themedStyle}`);
-    } else {
-      return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MailBench — Luxury Lifecycle & Retention Space</title>
-    ${tailwindScriptTag}
-    ${themedStyle}
-</head>
-<body class="bg-slate-50 transition-colors duration-300">
-    ${cleanCode}
-</body>
-</html>`;
+    if (startIdx !== -1 && endIdx !== -1) {
+      const scriptCode = DEFAULT_CHARTGPT_WEBSITE.substring(startIdx + 8, endIdx);
+      newScript.textContent = scriptCode;
+      document.body.appendChild(newScript);
     }
-  };
 
-  // Initial / HTML structure load hook
-  useEffect(() => {
-    if (iframeRef.current) {
-      const compiled = getCompiledDocHTML();
-      const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(compiled);
-        doc.close();
-      }
-    }
-  }, [htmlCode]);
+    // 7. Track simple visitor count
+    fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '/' })
+    }).catch(err => console.error("Analytics ping issue:", err));
 
-  // Surgical lag-free palette shift hook
-  useEffect(() => {
-    if (iframeRef.current) {
-      const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
-      if (doc) {
-        const existingStyleTag = doc.getElementById('mailbench-color-repaint-overrides');
-        if (existingStyleTag) {
-          existingStyleTag.textContent = getThemedStyleTagInner(activePalette);
-          return;
-        }
-      }
-      
-      const compiled = getCompiledDocHTML();
-      if (doc) {
-        doc.open();
-        doc.write(compiled);
-        doc.close();
-      }
-    }
-  }, [activePalette]);
+  }, [bodyHtml]);
 
   return (
-    <div style={{ margin: 0, padding: 0, overflow: 'hidden', width: '100vw', height: '100vh', backgroundColor: '#fffaf3' }}>
-      <iframe
-        id="live-themed-sandbox"
-        ref={iframeRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          display: 'block',
-          margin: 0,
-          padding: 0
-        }}
-        title="MailBench"
-      />
-    </div>
+    <div 
+      id="mailbench-native-container"
+      dangerouslySetInnerHTML={{ __html: bodyHtml }} 
+    />
   );
 }
