@@ -5,10 +5,10 @@ export const DEFAULT_CHARTGPT_WEBSITE = `<!DOCTYPE html>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Klaviyo Email Marketing Agency for DTC Brands | MailBench</title>
-<meta name="description" content="MailBench helps DTC ecommerce brands grow repeat revenue through Klaviyo email marketing, SMS, lifecycle flows, campaigns, and retention strategy." />
+<meta name="description" content="MailBench is a marketing agency specializing in email, SMS, and customer retention for DTC ecommerce brands, powered by deep Klaviyo expertise." />
 <link rel="canonical" href="https://www.mailbenchagency.com/" />
 <meta property="og:title" content="Klaviyo Email Marketing Agency for DTC Brands | MailBench" />
-<meta property="og:description" content="MailBench helps DTC ecommerce brands grow repeat revenue through Klaviyo email marketing, SMS, lifecycle flows, campaigns, and retention strategy." />
+<meta property="og:description" content="MailBench is a marketing agency specializing in email, SMS, and customer retention for DTC ecommerce brands, powered by deep Klaviyo expertise." />
 <meta property="og:url" content="https://www.mailbenchagency.com/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="MailBench" />
@@ -1525,6 +1525,8 @@ export const DEFAULT_CHARTGPT_WEBSITE = `<!DOCTYPE html>
 </div>
 <ul class="nav-links">
 <li><a data-target="services" href="javascript:void(0)">Services</a></li>
+<li><a href="/email-marketing-agency">Email Marketing Agency</a></li>
+<li><a href="/klaviyo-agency">Klaviyo Agency</a></li>
 <li><a data-target="industries" href="javascript:void(0)">Target Clients</a></li>
 <li><a data-target="flows" href="javascript:void(0)">Flows</a></li>
 <li><a data-target="results" href="javascript:void(0)">Results</a></li>
@@ -1537,7 +1539,7 @@ export const DEFAULT_CHARTGPT_WEBSITE = `<!DOCTYPE html>
 <div class="hero-copy reveal visible">
 <div class="eyebrow">Meticulous Retention Engineering</div>
 <h1 class="display">Klaviyo Email &amp; SMS Marketing<br/><em>for DTC Ecommerce Brands.</em></h1>
-<p class="hero-sub">MailBench is a Klaviyo email marketing and retention agency helping DTC ecommerce brands grow repeat revenue through lifecycle flows, campaigns, SMS marketing, segmentation, and retention strategy. We create customer communication that feels human, intentional, and built for long-term loyalty.</p>
+<p class="hero-sub">MailBench is a marketing agency specializing in email, SMS, and customer retention for ecommerce brands. Powered by deep Klaviyo expertise, we design lifecycle flows, high-converting campaigns, and predictive segmentation that transform first-time shoppers into repeat buyers and enduring brand advocates.</p>
 
 <div class="hero-quote-badge" style="background: rgba(255, 255, 255, 0.5); border: 1px solid var(--line); border-radius: 20px; padding: 1.15rem 1.4rem; margin: 1.2rem 0 1.8rem 0; cursor: pointer; transition: all 0.3s ease; backdrop-filter: blur(10px);">
 <p id="hero-dynamic-quote" style="font-family: var(--display); font-size: 1.12rem; font-style: italic; color: var(--ink); margin-bottom: 0.5rem; line-height: 1.35; transition: opacity 0.4s ease;">“Within 60 days of partnering with Mail Bench, our welcome sequences and cart recovery paths generated a 34% lift in repeat purchases.”</p>
@@ -1977,7 +1979,7 @@ DYNAMIC METRIC
   <span style="font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif; font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #FFFFFF; opacity: 0.55; margin-left: 2px;">
     KAVYA REDDY, FOUNDER
   </span>
-</div><p style="margin-top:.8rem">Premium email, SMS, lifecycle flows, and retention marketing for ecommerce brands.</p></div><div><h4>Services</h4><a data-target="services" href="javascript:void(0)">Website Designing</a><a data-target="services" href="javascript:void(0)">Email Marketing</a><a data-target="services" href="javascript:void(0)">SMS Marketing</a><a data-target="flows" href="javascript:void(0)">Lifecycle Flows</a></div><div><h4>Company</h4><a data-target="industries" href="javascript:void(0)">Industries</a><a data-target="results" href="javascript:void(0)">Results</a><a data-target="process" href="javascript:void(0)">Process</a></div><div><h4>Contact</h4><a href="mailto:services@mail-bench.com">services@mail-bench.com</a><a href="#">Instagram</a><a href="#">LinkedIn</a></div></div>
+</div><p style="margin-top:.8rem">Marketing agency specializing in email, SMS, and retention marketing for ecommerce brands.</p></div><div><h4>Specialized Agencies</h4><a href="/email-marketing-agency">Email Marketing Agency</a><a href="/klaviyo-agency">Klaviyo Agency</a><a data-target="services" href="javascript:void(0)">Retention Systems</a><a data-target="flows" href="javascript:void(0)">Lifecycle Flows</a></div><div><h4>Company</h4><a data-target="industries" href="javascript:void(0)">Industries</a><a data-target="results" href="javascript:void(0)">Results</a><a data-target="process" href="javascript:void(0)">Process</a></div><div><h4>Contact</h4><a href="mailto:services@mail-bench.com">services@mail-bench.com</a><a href="https://cal.com/kavya-lifecycle/30min" target="_blank" rel="noopener">Book Discovery Call</a><a data-target="contact" href="javascript:void(0)">Inquiry Form</a></div></div>
 
 </footer>
 <div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)"><div class="modal"><button class="modal-close" onclick="closeModal()">×</button><div id="modal-body"></div></div></div>

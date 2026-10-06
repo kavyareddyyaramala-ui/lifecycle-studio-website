@@ -6,6 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
 import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
+import { EMAIL_MARKETING_AGENCY_HTML, KLAVIYO_AGENCY_HTML } from "./seoPages";
 
 const LEADS_FILE = path.join(process.cwd(), "leads.json");
 const ANALYTICS_FILE = path.join(process.cwd(), "analytics.json");
@@ -188,7 +189,7 @@ function writeAnalytics(visits: any[]) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // State cache stores the user's custom layout code and active color palettes
   let globalState = {
@@ -389,6 +390,44 @@ async function startServer() {
     res.send(compiledHTML);
   };
 
+  // Helper to compile themed HTML for dedicated agency pages
+  const compilePageHTML = (rawHtml: string, req: express.Request) => {
+    const queryPaletteId = req.query.palette as string;
+    const activeId = queryPaletteId || globalState.activePaletteId;
+    const palette = LUXURY_PALETTES.find(p => p.id === activeId) || LUXURY_PALETTES[0];
+
+    const styleRules = getThemedStyleTagInner(palette);
+    const themedStyle = `
+    <style id="studio-color-repaint-overrides">
+    ${styleRules}
+    </style>
+    `;
+
+    const includesTailwind = rawHtml.toLowerCase().includes("tailwindcss") || rawHtml.toLowerCase().includes("cdn.tailwindcss.com");
+    const tailwindScriptTag = !includesTailwind 
+      ? '<script src="https://cdn.tailwindcss.com"></script>\n<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">'
+      : '';
+
+    if (/<\/head>/i.test(rawHtml)) {
+      return rawHtml.replace(/<\/head>/i, `    ${tailwindScriptTag}\n    ${themedStyle}\n</head>`);
+    } else if (/<head>/i.test(rawHtml)) {
+      return rawHtml.replace(/<head>/i, `<head>\n    ${tailwindScriptTag}\n    ${themedStyle}`);
+    }
+    return rawHtml;
+  };
+
+  const renderEmailMarketingAgencyHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(EMAIL_MARKETING_AGENCY_HTML, req);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(compiled);
+  };
+
+  const renderKlaviyoAgencyHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(KLAVIYO_AGENCY_HTML, req);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(compiled);
+  };
+
   // Serve static files from public folder (robots.txt, sitemap.xml, etc.) in both dev & prod
   const publicPath = path.join(process.cwd(), "public");
   app.use(express.static(publicPath, { index: false }));
@@ -406,6 +445,10 @@ async function startServer() {
   // Client Full-Screen/Smartphone Instant View Engine & Direct Public Homepage
   app.get("/", renderMailBenchHTML);
   app.get("/fullview", renderMailBenchHTML);
+
+  // Dedicated SEO Service Agency Pages (Complete Native HTML, No Iframes)
+  app.get("/email-marketing-agency", renderEmailMarketingAgencyHTML);
+  app.get("/klaviyo-agency", renderKlaviyoAgencyHTML);
 
   // Vite framework middleware inside dev container
   if (process.env.NODE_ENV !== "production") {
