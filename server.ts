@@ -1,23 +1,104 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import nodemailer from "nodemailer";
 import { GoogleGenAI } from "@google/genai";
+import { createServer as createViteServer } from "vite";
 import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
 import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
-import nodemailer from "nodemailer";
-
-/**
- * Required Environment Variables for Nodemailer Email Notification:
- * - SMTP_HOST: The SMTP server host address (e.g., mail.smtp.com or smtp.gmail.com)
- * - SMTP_PORT: The port number for your SMTP connection (typically 587 or 465)
- * - SMTP_USER: Username or email for the authenticated SMTP session
- * - SMTP_PASS: Password or app authorization token for SMTP session
- * - SMTP_FROM: Sender email address to dispatch alerts under (default: "no-reply@mail-bench.com")
- * - LEAD_NOTIFY_EMAIL: Recipient address that receives submissions (default: "services@mail-bench.com")
- */
 
 const LEADS_FILE = path.join(process.cwd(), "leads.json");
 const ANALYTICS_FILE = path.join(process.cwd(), "analytics.json");
+
+// Configure nodemailer transporter using environment variables with graceful fallback
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.SMTP_PORT || "587", 10),
+  secure: process.env.SMTP_SECURE === "true" || process.env.SMTP_PORT === "465",
+  auth: {
+    user: process.env.SMTP_USER || process.env.EMAIL_USER || "kavyareddy.yaramala@gmail.com",
+    pass: process.env.SMTP_PASS || process.env.EMAIL_PASS || "",
+  },
+});
+
+async function sendLeadEmail(lead: any) {
+  try {
+    const toEmail = process.env.LEAD_NOTIFY_EMAIL || "services@mail-bench.com";
+    const mailOptions = {
+      from: process.env.SMTP_FROM || `"MailBench Inbound" <${process.env.SMTP_USER || "no-reply@mailbenchagency.com"}>`,
+      to: toEmail,
+      subject: `🌟 New Premium Lead Captured - ${lead.company || lead.name}`,
+      text: `New Lead Captured on MailBench:
+
+Name: ${lead.name}
+Email: ${lead.email}
+Phone: ${lead.phone || "Not Provided"}
+Company: ${lead.company || "Not Provided"}
+Industry: ${lead.industry || "Not Provided"}
+Service Interested: ${lead.serviceInterested || "Not Provided"}
+Biggest Challenge: ${lead.biggestChallenge || "Not Provided"}
+Monthly Revenue: ${lead.monthlyRevenue || "Not Provided"}
+Timestamp: ${lead.timestamp}
+`,
+      html: `
+        <div style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e1ddd4; border-radius: 16px; background: #fffaf3; color: #201b16;">
+          <div style="border-bottom: 2px solid #bd8a5f; padding-bottom: 12px; margin-bottom: 18px;">
+            <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #6e4c38;">MailBench Inbound Notification</span>
+            <h2 style="font-size: 22px; margin: 6px 0 0 0; color: #201b16;">New DTC Brand Inquiry</h2>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b; width: 35%;">Full Name</td>
+              <td style="padding: 10px 0; color: #201b16; font-weight: 600;">${lead.name}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Email Address</td>
+              <td style="padding: 10px 0; color: #201b16;"><a href="mailto:${lead.email}" style="color: #6e4c38; text-decoration: none; font-weight: 600;">${lead.email}</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Phone</td>
+              <td style="padding: 10px 0; color: #201b16;">${lead.phone || "Not Provided"}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Company / Brand</td>
+              <td style="padding: 10px 0; color: #201b16; font-weight: 600;">${lead.company || "Not Provided"}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Industry Segment</td>
+              <td style="padding: 10px 0; color: #201b16;">${lead.industry || "Not Provided"}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Service Interested</td>
+              <td style="padding: 10px 0; color: #201b16; font-weight: 600;">${lead.serviceInterested || "Not Provided"}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Biggest Challenge</td>
+              <td style="padding: 10px 0; color: #201b16;">${lead.biggestChallenge || "Not Provided"}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ede1d3;">
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Monthly Revenue</td>
+              <td style="padding: 10px 0; color: #201b16;">${lead.monthlyRevenue || "Not Provided"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: 700; color: #71665b;">Timestamp</td>
+              <td style="padding: 10px 0; color: #9b8b7a; font-size: 12px;">${lead.timestamp}</td>
+            </tr>
+          </table>
+          <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e1ddd4; text-align: center; font-size: 12px; color: #9b8b7a;">
+            Sent automatically by MailBench Agency Platform
+          </div>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("[Nodemailer] Lead notification email delivered successfully:", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("[Nodemailer] Error sending lead notification email:", error);
+    return null;
+  }
+}
 
 // Helper utilities to load databases with elegant fallbacks
 function readLeads(): any[] {
@@ -33,18 +114,26 @@ function readLeads(): any[] {
       id: "lead-1",
       name: "Sienna Vance",
       email: "sienna@lacerosebeauty.com",
+      phone: "+1 (555) 349-2041",
       company: "Lace Rose Beauty",
       industry: "Beauty & Cosmetics",
       purpose: "Email Marketing",
+      serviceInterested: "Klaviyo Flow Optimization",
+      biggestChallenge: "Low welcome flow conversion rate",
+      monthlyRevenue: "$50k - $100k",
       timestamp: new Date(Date.now() - 36 * 3600 * 1000).toISOString()
     },
     {
       id: "lead-2",
       name: "Arthur Pendelton",
       email: "arthur@purelyvital.co",
+      phone: "+1 (555) 882-9103",
       company: "Purely Vital Supplements",
       industry: "Wellness & Routines",
       purpose: "Customer Retention",
+      serviceInterested: "Full Retention Lifecycle",
+      biggestChallenge: "Second purchase repeat rate drop-off",
+      monthlyRevenue: "$100k - $250k",
       timestamp: new Date(Date.now() - 15 * 3600 * 1000).toISOString()
     }
   ];
@@ -97,123 +186,6 @@ function writeAnalytics(visits: any[]) {
   }
 }
 
-/**
- * Sends a real SMTP email notification for captured leads using Nodemailer.
- * Requires: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, and LEAD_NOTIFY_EMAIL
- */
-async function sendLeadEmail(lead: any) {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || "no-reply@mail-bench.com";
-  const to = process.env.LEAD_NOTIFY_EMAIL || "services@mail-bench.com";
-
-  if (!host || !user || !pass) {
-    console.warn("[Nodemailer] SMTP configuration is incomplete. Real email notification skipped.", {
-      host: !!host,
-      user: !!user,
-      pass: !!pass
-    });
-    return;
-  }
-
-  // Create transporter dynamically to protect main thread load
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465, // true for port 465 SSL, false for TLS port 587
-    auth: {
-      user,
-      pass,
-    },
-  });
-
-  const subject = `New MailBench Inquiry - ${lead.name || "Unknown"} (${lead.company || "No Company"})`;
-
-  const textBody = `
-=================================================
-New MailBench Inquiry Captured
-=================================================
-Date/Time: ${lead.timestamp}
-Full Name: ${lead.name}
-Email Address: ${lead.email}
-Phone Number: ${lead.phone || "Not Provided"}
-Company/Brand: ${lead.company}
-Industry Segment: ${lead.industry}
-Service Needed: ${lead.serviceInterested}
-Obstacle/Message: ${lead.biggestChallenge}
-Monthly Revenue: ${lead.monthlyRevenue}
-=================================================
-Registered securely in leads.json database cache.
-  `;
-
-  const htmlBody = `
-    <div style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #eedfc9; border-radius: 12px; background-color: #fffaf3; color: #1c1815;">
-      <div style="border-bottom: 2px solid #e17938; padding-bottom: 16px; margin-bottom: 24px;">
-        <h2 style="color: #132c4a; margin: 0 0 6px 0; font-size: 22px; font-weight: bold;">MailBench Lifecycle Studio</h2>
-        <p style="color: #e17938; font-weight: bold; margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;">New Inquiry Captured Automatically</p>
-      </div>
-      
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-        <tbody>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82; width: 35%;">Submission Date:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.timestamp}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Full Name:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815; font-size: 15px;"><strong>${lead.name}</strong></td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Email Address:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;"><a href="mailto:${lead.email}" style="color: #e17938; text-decoration: none;">${lead.email}</a></td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Phone Number:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.phone || "Not Provided"}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Company / Brand:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815; font-size: 15px;"><strong>${lead.company}</strong></td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Industry Segment:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.industry}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Service Needed:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #132c4a; font-weight: 600;">${lead.serviceInterested}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; font-weight: bold; color: #5a6b82;">Monthly Revenue:</td>
-            <td style="padding: 10px 0; border-bottom: 1px solid #eedfc9; color: #1c1815;">${lead.monthlyRevenue}</td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 0; vertical-align: top; font-weight: bold; color: #5a6b82; padding-top: 10px;">Obstacle / Memo:</td>
-            <td style="padding: 10px 0; color: #1c1815; line-height: 1.5; padding-top: 10px;">${lead.biggestChallenge}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="background-color: #fbf4ec; border-radius: 8px; padding: 12px 16px; font-size: 11px; color: #8fa0b5; text-align: center; border: 1px dashed #eedfc9;">
-        This is an automated notification dispatch from MailBench Lifecycle. Submissions are saved persistently in local storage database.
-      </div>
-    </div>
-  `;
-
-  await transporter.sendMail({
-    from: `"${from.split("@")[0]}" <${from}>`,
-    to,
-    subject,
-    text: textBody,
-    html: htmlBody,
-  });
-
-  const notifyEmailEnv = process.env.LEAD_NOTIFY_EMAIL || "services@mail-bench.com";
-  console.log(`REAL EMAIL SENT TO: ${notifyEmailEnv}`);
-}
-
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -255,8 +227,8 @@ async function startServer() {
     });
   });
 
-  // API 4: Capture premium inquiry submissions & notify user via real SMTP email trigger
-  app.post("/api/leads", (req, res) => {
+  // API 4: Capture premium inquiry submissions & notify user via nodemailer email delivery
+  app.post("/api/leads", async (req, res) => {
     const { name, email, phone, company, industry, serviceInterested, biggestChallenge, monthlyRevenue } = req.body;
     
     if (!name || !email) {
@@ -268,7 +240,7 @@ async function startServer() {
       id: "lead-" + Date.now().toString(36),
       name,
       email,
-      phone: phone || req.body.Phone || "Not Provided",
+      phone: phone || "Not Provided",
       company: company || "Not Provided",
       industry: industry || "Not Provided",
       serviceInterested: serviceInterested || "Not Provided",
@@ -277,35 +249,11 @@ async function startServer() {
       timestamp: new Date().toISOString()
     };
 
-    // Keep saving to leads.json exactly as it is (Step 1)
     leads.unshift(newLead);
     writeLeads(leads);
 
-    // Keep console logs active for quick inspection
-    console.log("=================================================");
-    console.log(`[SMTP Alert] NEW INQUIRY SAVED TO DATABASE`);
-    console.log(`Subject: New MailBench Inquiry - ${newLead.name || newLead.company}`);
-    console.log(`Lead Details:`);
-    console.log(`- Full Name: ${newLead.name}`);
-    console.log(`- Email Address: ${newLead.email}`);
-    console.log(`- Phone Number: ${newLead.phone}`);
-    console.log(`- Brand / Company: ${newLead.company}`);
-    console.log(`- Industry Segment: ${newLead.industry}`);
-    console.log(`- Service Interested In: ${newLead.serviceInterested}`);
-    console.log(`- Biggest Challenge: ${newLead.biggestChallenge}`);
-    console.log(`- Monthly Revenue: ${newLead.monthlyRevenue}`);
-    console.log(`- Timestamp: ${newLead.timestamp}`);
-    console.log("=================================================");
-
-    // Dispatch real email alert using Nodemailer with environment variables (Step 8)
-    sendLeadEmail(newLead)
-      .then(() => {
-        console.log("[Nodemailer] Email transmitted successfully.");
-      })
-      .catch((err) => {
-        // Robust Error Handling: if send fails, we still continue with success response
-        console.error("[Nodemailer] Failed to send email alert:", err);
-      });
+    // Actual email delivery via nodemailer
+    await sendLeadEmail(newLead);
 
     res.json({ 
       success: true, 
@@ -334,7 +282,7 @@ async function startServer() {
     return googleGenAIInstance;
   }
 
-  // API 4.5: Chat with AI Strategist
+  // API 4.5: Chat with MailBench AI Strategist
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages } = req.body;
@@ -356,16 +304,16 @@ async function startServer() {
         model: "gemini-3.5-flash",
         contents: contents,
         config: {
-          systemInstruction: "You are the 'MailBench AI Strategist', working alongside Retention Director Kavya. Your responses must be in simple, plain, easy-to-understand English. Always keep your replies extremely short, helpful, and interesting (maximum 2 to 3 concise bullet remarks or short sentences). Never write long blocks of text. If a customer chats without providing their business details, answer their questions simply, offer smart options, and casually ask for their details (name, company name, industry, or what they are looking for). If they provide details, highlight key ideas and suggest options. CRITICAL: At the very end of every single response, you must generate 2 to 3 short, inviting follow-up questions the user is likely to want to ask next, enclosed in brackets like: '[Suggest: What is a welcome series? | How to fix abandoned cart? | Book a call with Kavya]'. This lets the customer click them instead of typing. Keep the suggestions relevant to the conversation.",
+          systemInstruction: "You are the 'MailBench AI Retention Strategist', representing MailBench (the premier Klaviyo Email & SMS Marketing agency for high-growth DTC ecommerce brands) working alongside Founder Kavya Reddy. Your responses must be in simple, plain, easy-to-understand English. Always keep your replies concise, consultative, and insightful (maximum 2 to 3 concise bullet remarks or short sentences). If a customer chats without providing their store or brand details, answer their questions clearly about DTC email/SMS flows (welcome series, abandoned checkout, browse abandonment, post-purchase, winbacks, VIP retention), and casually ask for their brand name, store URL, or monthly revenue stage. If they provide details, highlight high-impact retention opportunities. CRITICAL: At the very end of every single response, you must generate 2 to 3 short, clickable follow-up suggestions enclosed in brackets like: '[Suggest: What Klaviyo flows do we need? | How to increase repeat purchase rate? | Book a call with Kavya Reddy]'. Keep the suggestions relevant to the conversation.",
           temperature: 0.6,
         }
       });
 
-      const replyText = response.text || "Good day. I am currently evaluating optimization profiles. Please feel free to schedule a direct consult using our Discovery Booking interface.";
+      const replyText = response.text || "Hello! I am the MailBench Retention Strategist. We help DTC brands scale repeat revenue through high-converting Klaviyo email and SMS flows. How can I help your brand today?";
       res.json({ reply: replyText });
     } catch (err: any) {
-      console.error("Gemini AI Chat Strategy Error:", err);
-      res.status(500).json({ error: "My apologies. The AI strategy node is currently updating. Please use our discovery call calendar instead!" });
+      console.error("MailBench AI Chat Strategy Error:", err);
+      res.status(500).json({ error: "My apologies. The MailBench strategy advisor is briefly reconnecting. Please feel free to book a direct discovery call with our team!" });
     }
   });
 
@@ -391,9 +339,9 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Client Full-Screen/Smartphone Instant View Engine
-  app.get("/fullview", (req, res) => {
-    // Optional override via query string e.g., /fullview?palette=cosmic-indigo
+  // Shared Request Handler: Generates complete MailBench HTML with active theme
+  const renderMailBenchHTML: express.RequestHandler = (req, res) => {
+    // Optional override via query string e.g., /fullview?palette=mykonos-olive-limestone
     const queryPaletteId = req.query.palette as string;
     const activeId = queryPaletteId || globalState.activePaletteId;
     const palette = LUXURY_PALETTES.find(p => p.id === activeId) || LUXURY_PALETTES[0];
@@ -401,26 +349,26 @@ async function startServer() {
     // CSS styling rules
     const styleRules = getThemedStyleTagInner(palette);
     const themedStyle = `
-    <style id="mailbench-color-repaint-overrides">
+    <style id="studio-color-repaint-overrides">
     ${styleRules}
     </style>
     `;
 
-    let cleanCode = globalState.htmlCode.trim();
+    let cleanCode = typeof globalState?.htmlCode === "string" ? globalState.htmlCode.trim() : "";
     if (!cleanCode) {
       cleanCode = DEFAULT_CHARTGPT_WEBSITE;
     }
 
-    const includesTailwind = cleanCode.includes("tailwindcss") || cleanCode.includes("cdn.tailwindcss.com");
+    const includesTailwind = cleanCode.toLowerCase().includes("tailwindcss") || cleanCode.toLowerCase().includes("cdn.tailwindcss.com");
     const tailwindScriptTag = !includesTailwind 
       ? '<script src="https://cdn.tailwindcss.com"></script>\n<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">'
       : '';
 
     let compiledHTML = "";
-    if (cleanCode.includes("<head>")) {
-      compiledHTML = cleanCode.replace("<head>", `<head>\n    ${tailwindScriptTag}\n    ${themedStyle}`);
-    } else if (cleanCode.includes("</head>")) {
-      compiledHTML = cleanCode.replace("</head>", `    ${themedStyle}\n</head>`);
+    if (/<\/head>/i.test(cleanCode)) {
+      compiledHTML = cleanCode.replace(/<\/head>/i, `    ${tailwindScriptTag}\n    ${themedStyle}\n</head>`);
+    } else if (/<head>/i.test(cleanCode)) {
+      compiledHTML = cleanCode.replace(/<head>/i, `<head>\n    ${tailwindScriptTag}\n    ${themedStyle}`);
     } else {
       compiledHTML = `<!DOCTYPE html>
 <html lang="en">
@@ -437,9 +385,27 @@ async function startServer() {
 </html>`;
     }
 
-    res.setHeader("Content-Type", "text/html");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(compiledHTML);
+  };
+
+  // Serve static files from public folder (robots.txt, sitemap.xml, etc.) in both dev & prod
+  const publicPath = path.join(process.cwd(), "public");
+  app.use(express.static(publicPath, { index: false }));
+
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain");
+    res.sendFile(path.join(publicPath, "robots.txt"));
   });
+
+  app.get("/sitemap.xml", (req, res) => {
+    res.type("application/xml");
+    res.sendFile(path.join(publicPath, "sitemap.xml"));
+  });
+
+  // Client Full-Screen/Smartphone Instant View Engine & Direct Public Homepage
+  app.get("/", renderMailBenchHTML);
+  app.get("/fullview", renderMailBenchHTML);
 
   // Vite framework middleware inside dev container
   if (process.env.NODE_ENV !== "production") {
