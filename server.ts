@@ -6,7 +6,14 @@ import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { DEFAULT_CHARTGPT_WEBSITE } from "./template";
 import { LUXURY_PALETTES, getThemedStyleTagInner } from "./palettes";
-import { EMAIL_MARKETING_AGENCY_HTML, KLAVIYO_AGENCY_HTML } from "./seoPages";
+import {
+  EMAIL_MARKETING_AGENCY_HTML,
+  SMS_MARKETING_AGENCY_HTML,
+  LIFECYCLE_MARKETING_AGENCY_HTML,
+  RETENTION_MARKETING_AGENCY_HTML,
+  EMAIL_AUTOMATION_AGENCY_HTML,
+  EMAIL_MARKETING_AUDIT_HTML,
+} from "./seoPages";
 
 const LEADS_FILE = path.join(process.cwd(), "leads.json");
 const ANALYTICS_FILE = path.join(process.cwd(), "analytics.json");
@@ -119,7 +126,7 @@ function readLeads(): any[] {
       company: "Lace Rose Beauty",
       industry: "Beauty & Cosmetics",
       purpose: "Email Marketing",
-      serviceInterested: "Klaviyo Flow Optimization",
+      serviceInterested: "Lifecycle Flow Optimization",
       biggestChallenge: "Low welcome flow conversion rate",
       monthlyRevenue: "$50k - $100k",
       timestamp: new Date(Date.now() - 36 * 3600 * 1000).toISOString()
@@ -305,12 +312,12 @@ async function startServer() {
         model: "gemini-3.5-flash",
         contents: contents,
         config: {
-          systemInstruction: "You are the 'MailBench AI Retention Strategist', representing MailBench (the premier Klaviyo Email & SMS Marketing agency for high-growth DTC ecommerce brands) working alongside Founder Kavya Reddy. Your responses must be in simple, plain, easy-to-understand English. Always keep your replies concise, consultative, and insightful (maximum 2 to 3 concise bullet remarks or short sentences). If a customer chats without providing their store or brand details, answer their questions clearly about DTC email/SMS flows (welcome series, abandoned checkout, browse abandonment, post-purchase, winbacks, VIP retention), and casually ask for their brand name, store URL, or monthly revenue stage. If they provide details, highlight high-impact retention opportunities. CRITICAL: At the very end of every single response, you must generate 2 to 3 short, clickable follow-up suggestions enclosed in brackets like: '[Suggest: What Klaviyo flows do we need? | How to increase repeat purchase rate? | Book a call with Kavya Reddy]'. Keep the suggestions relevant to the conversation.",
+          systemInstruction: "You are the 'MailBench AI Retention Strategist', representing MailBench (the premier Email & SMS Lifecycle Marketing agency for growing brands across ecommerce, SaaS, wellness, beauty, lifestyle, and modern services) working alongside Founder Kavya Reddy. Your responses must be in simple, plain, easy-to-understand English. Always keep your replies concise, consultative, and insightful (maximum 2 to 3 concise bullet remarks or short sentences). If a customer chats without providing their business details, answer their questions clearly about lifecycle email/SMS flows (welcome series, abandoned checkout, browse recovery, post-purchase onboarding, winbacks, VIP retention), and casually ask for their brand name, website URL, or monthly revenue stage. If they provide details, highlight high-impact retention opportunities. CRITICAL: At the very end of every single response, you must generate 2 to 3 short, clickable follow-up suggestions enclosed in brackets like: '[Suggest: What lifecycle flows do we need? | How to increase customer retention? | Book a call with Kavya Reddy]'. Keep the suggestions relevant to the conversation.",
           temperature: 0.6,
         }
       });
 
-      const replyText = response.text || "Hello! I am the MailBench Retention Strategist. We help DTC brands scale repeat revenue through high-converting Klaviyo email and SMS flows. How can I help your brand today?";
+      const replyText = response.text || "Hello! I am the MailBench Retention Strategist. We help growing brands scale customer engagement and repeat revenue through strategic email and SMS lifecycle marketing. How can I help your brand today?";
       res.json({ reply: replyText });
     } catch (err: any) {
       console.error("MailBench AI Chat Strategy Error:", err);
@@ -422,8 +429,32 @@ async function startServer() {
     res.send(compiled);
   };
 
-  const renderKlaviyoAgencyHTML: express.RequestHandler = (req, res) => {
-    const compiled = compilePageHTML(KLAVIYO_AGENCY_HTML, req);
+  const renderSmsMarketingAgencyHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(SMS_MARKETING_AGENCY_HTML, req);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(compiled);
+  };
+
+  const renderLifecycleMarketingAgencyHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(LIFECYCLE_MARKETING_AGENCY_HTML, req);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(compiled);
+  };
+
+  const renderRetentionMarketingAgencyHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(RETENTION_MARKETING_AGENCY_HTML, req);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(compiled);
+  };
+
+  const renderEmailAutomationAgencyHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(EMAIL_AUTOMATION_AGENCY_HTML, req);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(compiled);
+  };
+
+  const renderEmailMarketingAuditHTML: express.RequestHandler = (req, res) => {
+    const compiled = compilePageHTML(EMAIL_MARKETING_AUDIT_HTML, req);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(compiled);
   };
@@ -448,7 +479,16 @@ async function startServer() {
 
   // Dedicated SEO Service Agency Pages (Complete Native HTML, No Iframes)
   app.get("/email-marketing-agency", renderEmailMarketingAgencyHTML);
-  app.get("/klaviyo-agency", renderKlaviyoAgencyHTML);
+  app.get("/sms-marketing-agency", renderSmsMarketingAgencyHTML);
+  app.get("/lifecycle-marketing-agency", renderLifecycleMarketingAgencyHTML);
+  app.get("/retention-marketing-agency", renderRetentionMarketingAgencyHTML);
+  app.get("/email-automation-agency", renderEmailAutomationAgencyHTML);
+  app.get("/email-marketing-audit", renderEmailMarketingAuditHTML);
+
+  // Legacy route redirect
+  app.get("/klaviyo-agency", (req, res) => {
+    res.redirect(301, "/email-marketing-agency");
+  });
 
   // Vite framework middleware inside dev container
   if (process.env.NODE_ENV !== "production") {
