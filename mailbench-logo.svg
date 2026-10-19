@@ -1,0 +1,5 @@
+<svg class="logo-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 32px; height: 32px; flex-shrink: 0;">
+      <path d="M 32 32 C 24 22, 10 22, 10 32 C 10 42, 24 42, 32 32 C 40 22, 54 22, 54 32 C 54 42, 40 42, 32 32 Z" stroke="#1B2B48" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <circle cx="21" cy="32" r="5" fill="#E16E34" />
+      <path d="M 37 31 L 43 37 L 51 26" stroke="#E16E34" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </svg>

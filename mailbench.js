@@ -1,0 +1,15 @@
+(()=>{
+const root=document.body;
+root.addEventListener('click',event=>{
+ const anchor=event.target.closest('a[href^="#"]');if(anchor){const target=document.getElementById(anchor.getAttribute('href').slice(1));if(target){event.preventDefault();target.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}}
+ const button=event.target.closest('button');if(!button)return;
+ if(button.classList.contains('mb-menu')){const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));document.getElementById('mb-links').classList.toggle('is-open',open)}
+ if(button.dataset.audience){const picker=button.closest('.af-picker');picker.querySelectorAll('[data-audience]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));picker.querySelectorAll('[data-audience-panel]').forEach(p=>p.hidden=p.dataset.audiencePanel!==button.dataset.audience)}
+ if(button.dataset.filter){document.querySelectorAll('[data-filter]').forEach(b=>{b.setAttribute('aria-pressed',String(b===button));b.classList.toggle('is-active',b===button)});document.querySelectorAll('[data-template-category]').forEach(c=>c.hidden=button.dataset.filter!=='All'&&c.dataset.templateCategory!==button.dataset.filter)}
+ if(button.dataset.template){const dialog=document.getElementById('af-template-dialog');document.getElementById('af-template-title').textContent=button.dataset.label;document.getElementById('af-template-content').innerHTML=document.getElementById(button.dataset.template).innerHTML;dialog.showModal()}
+ if(button.classList.contains('af-dialog-close'))document.getElementById('af-template-dialog').close();
+});
+document.querySelectorAll('#mb-links a').forEach(a=>a.addEventListener('click',()=>{document.querySelector('.mb-menu').setAttribute('aria-expanded','false');document.getElementById('mb-links').classList.remove('is-open')}));
+document.getElementById('mb-year').textContent=new Date().getFullYear();
+const form=document.getElementById('mb-inquiry');form?.addEventListener('submit',async event=>{event.preventDefault();const button=form.querySelector('button'),status=document.getElementById('mb-form-status');if(location.protocol==='file:'){status.textContent='Preview only. Please email services@mail-bench.com or book a call.';return}button.disabled=true;status.textContent='Sending your inquiry…';try{const response=await fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))});if(!response.ok)throw new Error('Unable to send');status.textContent='Thank you. Your inquiry has been received.';form.reset()}catch{status.textContent='Please email services@mail-bench.com directly. We could not send the notification.'}finally{button.disabled=false}});
+})();
