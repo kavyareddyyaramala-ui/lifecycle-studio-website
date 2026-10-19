@@ -1,3 +1,8 @@
+import { EXTRA_SERVICE_PAGES } from "./extraServicePages";
+import { OUR_WORK_HTML } from "./workPage";
+import { AUDIENCE_HTML } from "./audiencePage";
+import { ABOUT_US_HTML } from "./aboutPage";
+import { installPopupInquiryRoute } from "./popupInquiry";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -31,10 +36,13 @@ const transporter = nodemailer.createTransport({
 
 async function sendLeadEmail(lead: any) {
   try {
-    const toEmail = process.env.LEAD_NOTIFY_EMAIL || "services@mail-bench.com";
+    const toEmail = "services@mail-bench.com";
+    const replyTo = lead.email;
+    lead = Object.fromEntries(Object.entries(lead).map(([key, value]) => [key, String(value).replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char] || char))]));
     const mailOptions = {
       from: process.env.SMTP_FROM || `"MailBench Inbound" <${process.env.SMTP_USER || "no-reply@mailbenchagency.com"}>`,
       to: toEmail,
+      replyTo,
       subject: `🌟 New Premium Lead Captured - ${lead.company || lead.name}`,
       text: `New Lead Captured on MailBench:
 
@@ -52,7 +60,7 @@ Timestamp: ${lead.timestamp}
         <div style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e1ddd4; border-radius: 16px; background: #fffaf3; color: #201b16;">
           <div style="border-bottom: 2px solid #bd8a5f; padding-bottom: 12px; margin-bottom: 18px;">
             <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #6e4c38;">MailBench Inbound Notification</span>
-            <h2 style="font-size: 22px; margin: 6px 0 0 0; color: #201b16;">New DTC Brand Inquiry</h2>
+            <h2 style="font-size: 22px; margin: 6px 0 0 0; color: #201b16;">New Business Inquiry</h2>
           </div>
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <tr style="border-bottom: 1px solid #ede1d3;">
@@ -100,7 +108,8 @@ Timestamp: ${lead.timestamp}
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("[Nodemailer] Lead notification email delivered successfully:", info.messageId);
+    if (!(info.accepted || []).some((address: any) => String(address).toLowerCase() === toEmail)) throw new Error("Recipient rejected");
+    console.log("[Nodemailer] Lead notification accepted:", info.messageId);
     return info;
   } catch (error) {
     console.error("[Nodemailer] Error sending lead notification email:", error);
@@ -239,7 +248,7 @@ async function startServer() {
   app.post("/api/leads", async (req, res) => {
     const { name, email, phone, company, industry, serviceInterested, biggestChallenge, monthlyRevenue } = req.body;
     
-    if (!name || !email) {
+    if (typeof name !== "string" || !name.trim() || name.length > 120 || typeof email !== "string" || email.length > 254 || !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(email) || /[\r\n\0]/.test(name + email)) {
       return res.status(400).json({ error: "Name and Email are required fields." });
     }
 
@@ -261,7 +270,8 @@ async function startServer() {
     writeLeads(leads);
 
     // Actual email delivery via nodemailer
-    await sendLeadEmail(newLead);
+    const delivery = await sendLeadEmail(newLead);
+    if (!delivery) return res.status(503).json({ success: false, error: "Email could not be sent. Please email services@mail-bench.com." });
 
     res.json({ 
       success: true, 
@@ -349,79 +359,10 @@ async function startServer() {
 
   // Shared Request Handler: Generates complete MailBench HTML with active theme
   const renderMailBenchHTML: express.RequestHandler = (req, res) => {
-    // Optional override via query string e.g., /fullview?palette=mykonos-olive-limestone
-    const queryPaletteId = req.query.palette as string;
-    const activeId = queryPaletteId || globalState.activePaletteId;
-    const palette = LUXURY_PALETTES.find(p => p.id === activeId) || LUXURY_PALETTES[0];
-
-    // CSS styling rules
-    const styleRules = getThemedStyleTagInner(palette);
-    const themedStyle = `
-    <style id="studio-color-repaint-overrides">
-    ${styleRules}
-    </style>
-    `;
-
-    let cleanCode = typeof globalState?.htmlCode === "string" ? globalState.htmlCode.trim() : "";
-    if (!cleanCode) {
-      cleanCode = DEFAULT_CHARTGPT_WEBSITE;
-    }
-
-    const includesTailwind = cleanCode.toLowerCase().includes("tailwindcss") || cleanCode.toLowerCase().includes("cdn.tailwindcss.com");
-    const tailwindScriptTag = !includesTailwind 
-      ? '<script src="https://cdn.tailwindcss.com"></script>\n<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">'
-      : '';
-
-    let compiledHTML = "";
-    if (/<\/head>/i.test(cleanCode)) {
-      compiledHTML = cleanCode.replace(/<\/head>/i, `    ${tailwindScriptTag}\n    ${themedStyle}\n</head>`);
-    } else if (/<head>/i.test(cleanCode)) {
-      compiledHTML = cleanCode.replace(/<head>/i, `<head>\n    ${tailwindScriptTag}\n    ${themedStyle}`);
-    } else {
-      compiledHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Themed Complete View</title>
-    ${tailwindScriptTag}
-    ${themedStyle}
-</head>
-<body class="transition-colors duration-300">
-    ${cleanCode}
-</body>
-</html>`;
-    }
-
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(compiledHTML);
+    res.type("html").send(DEFAULT_CHARTGPT_WEBSITE);
   };
 
-  // Helper to compile themed HTML for dedicated agency pages
-  const compilePageHTML = (rawHtml: string, req: express.Request) => {
-    const queryPaletteId = req.query.palette as string;
-    const activeId = queryPaletteId || globalState.activePaletteId;
-    const palette = LUXURY_PALETTES.find(p => p.id === activeId) || LUXURY_PALETTES[0];
-
-    const styleRules = getThemedStyleTagInner(palette);
-    const themedStyle = `
-    <style id="studio-color-repaint-overrides">
-    ${styleRules}
-    </style>
-    `;
-
-    const includesTailwind = rawHtml.toLowerCase().includes("tailwindcss") || rawHtml.toLowerCase().includes("cdn.tailwindcss.com");
-    const tailwindScriptTag = !includesTailwind 
-      ? '<script src="https://cdn.tailwindcss.com"></script>\n<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">'
-      : '';
-
-    if (/<\/head>/i.test(rawHtml)) {
-      return rawHtml.replace(/<\/head>/i, `    ${tailwindScriptTag}\n    ${themedStyle}\n</head>`);
-    } else if (/<head>/i.test(rawHtml)) {
-      return rawHtml.replace(/<head>/i, `<head>\n    ${tailwindScriptTag}\n    ${themedStyle}`);
-    }
-    return rawHtml;
-  };
+  const compilePageHTML = (rawHtml: string, _req: express.Request) => rawHtml;
 
   const renderEmailMarketingAgencyHTML: express.RequestHandler = (req, res) => {
     const compiled = compilePageHTML(EMAIL_MARKETING_AGENCY_HTML, req);
@@ -484,6 +425,14 @@ async function startServer() {
   app.get("/retention-marketing-agency", renderRetentionMarketingAgencyHTML);
   app.get("/email-automation-agency", renderEmailAutomationAgencyHTML);
   app.get("/email-marketing-audit", renderEmailMarketingAuditHTML);
+
+  installPopupInquiryRoute(app);
+  for (const [route, markup] of Object.entries({
+    ...EXTRA_SERVICE_PAGES,
+    "/our-work": OUR_WORK_HTML,
+    "/who-we-help": AUDIENCE_HTML,
+    "/about-us": ABOUT_US_HTML,
+  })) app.get(route, (_req, res) => { res.type("html").send(markup); });
 
   // Legacy route redirect
   app.get("/klaviyo-agency", (req, res) => {
